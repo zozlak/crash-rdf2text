@@ -1,0 +1,15 @@
+{
+    "name": "crash/textit",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Mateusz Żółtak",
+            "email": "zozlak@zozlak.org"
+        }
+    ],
+    "require": {
+        "sweetrdf/quick-rdf-io": "^1.3",
+        "sweetrdf/term-templates": "^2.0",
+        "sweetrdf/quick-rdf": "^2.0"
+    }
+}
