@@ -1,32 +1,35 @@
 # CRASH rdf2text
 
-Scripts for turning RDF triples into continues text for the CRASH hackaton.
+Scripts for transforming RDF triples into continuous text for the CRASH hackathon.
 
 ## How to run?
 
-* Clone this repo.
-* Download sample data with
-  ```
+* Clone this repository.
+* Download the sample data:
+  ``` bash
   curl https://arche.acdh.oeaw.ac.at/crash/arche_mylius.nt > mylius.nt
   curl https://arche.acdh.oeaw.ac.at/crash/arche_etmira.nt > etmira.nt
   ```
-* Continue depending on your prefered programming language.
+* Continue with the instructions for your preferred programming language.
 
 ### PHP
 
-* Obtain the [compoers](https://getcomposer.org/)
-* Install deps with `composer update`
-* Run the transormation with
+* Install [Composer](https://getcomposer.org/)
+* Install the dependencies:
+  ``` bash
+  composer update
   ```
+* Run the transformation:
+  ``` bash
   php -f rdf2text.php mylius.nt mylius.txt
   php -f rdf2text.php etmira.nt etmira.txt
   ```
 
 ### Python
 
-* Obtain the [uv](https://docs.astral.sh/uv/)
-* Run the transformation with
-  ```
+* Install [uv](https://docs.astral.sh/uv/)
+* Run the transformation:
+  ``` bash
   uv run rdf2text.py mylius.nt mylius.txt
   uv run rdf2text.py etmira.nt etmira.txt
   ```
