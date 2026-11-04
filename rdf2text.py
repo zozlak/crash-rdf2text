@@ -256,11 +256,28 @@ for s, p, o in g:
 
 # Resolve labels for linked resources
 
-def resource_label(term, depth=0, visited=None):
+# Cache labels so repeated resources are only resolved once
+LABEL_CACHE = {}
+
+
+def resource_label(term):
+    """Resolve a resource label and cache the result."""
+
+    if term in LABEL_CACHE:
+        return LABEL_CACHE[term]
+
+    result = _resolve_resource_label(term, depth=0, visited=set())
+
+    LABEL_CACHE[term] = result
+    return result
+
+
+def _resolve_resource_label(term, depth=0, visited=None):
     """
     Prefer graph labels and titles.
     Fall back to a URI identifier.
     """
+
     if isinstance(term, Literal):
         return clean_text(term)
 
@@ -278,21 +295,18 @@ def resource_label(term, depth=0, visited=None):
 
     visited = visited | {term}
 
-    preferred = {
+    preferred = (
         "preflabel",
         "label",
         "title",
         "hastitle",
         "hasalternativetitle",
         "name",
-    }
+    )
 
-    # Prefer literal labels and titles
-    for predicate, obj in g.predicate_objects(term):
-        if (
-            str(predicate) in LABEL_PREDICATES
-            or local_name(predicate).lower() in preferred
-        ):
+    # Use the existing properties index instead of searching the graph
+    for name in preferred:
+        for obj in properties.get((term, name), []):
             if isinstance(obj, Literal) and clean_text(obj):
                 return clean_text(obj)
 
@@ -304,7 +318,9 @@ def resource_label(term, depth=0, visited=None):
                 return clean_text(obj)
 
             if isinstance(obj, URIRef):
-                label = resource_label(obj, depth + 1, visited)
+                label = _resolve_resource_label(
+                    obj, depth + 1, visited
+                )
 
                 if label != uri_fallback(obj):
                     return label
