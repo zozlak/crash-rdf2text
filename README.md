@@ -28,8 +28,16 @@ Scripts for transforming RDF triples into continuous text for the CRASH hackatho
 ### Python
 
 * Install [uv](https://docs.astral.sh/uv/)
+* Install the project dependencies:
+  ```bash
+  uv sync
+  ```
+  This installs the dependencies listed in `pyproject.toml` and `uv.lock`. If these files are not yet present, add the required dependencies first:
+  ```bash
+  uv add rdflib matplotlib seaborn python-dateutil
+  ```
 * Run the transformation:
-  ``` bash
+  ```bash
   uv run rdf2text.py mylius.nt mylius.txt
   uv run rdf2text.py etmira.nt etmira.txt
   ```
