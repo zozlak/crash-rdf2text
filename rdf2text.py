@@ -201,19 +201,35 @@ def clean_text(value):
     return str(value).strip()
 
 
+
+
 def format_friendly_date(date_str):
-    """Format ISO timestamps into friendly readable dates without losing data."""
+    """Format dates as ISO YYYY-MM-DD, preserving time and timezone."""
     try:
-        dt = dateutil.parser.isoparse(date_str)
+        date_text = str(date_str)
+        dt = dateutil.parser.isoparse(date_text)
 
-        # If time is present and non-zero
-        if dt.hour or dt.minute or dt.second:
-            return dt.strftime("%B %d, %Y at %I:%M %p")
+        # Date only: YYYY-MM-DD
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_text):
+            return dt.strftime("%Y-%m-%d")
 
-        return dt.strftime("%B %d, %Y")
+        # Date and time, including seconds
+        result = dt.strftime("%Y-%m-%d at %H:%M:%S")
 
-    except Exception:
-        return date_str
+        # Preserve timezone when present
+        if dt.tzinfo is not None:
+            offset = dt.strftime("%z")
+
+            if offset == "+0000":
+                result += " UTC"
+            else:
+                result += f" UTC{offset[:3]}:{offset[3:]}"
+
+        return result
+
+    except (ValueError, TypeError):
+        return str(date_str)
+
 
 
 def uri_fallback(uri):
