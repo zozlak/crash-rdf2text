@@ -1,13 +1,13 @@
 
 # Tests to process RDF to text in preparation for CRASH hackaton in Graz 2026
 
-# Naomi Nota 2026-10-27
+# Naomi Nota last edit 2026-11-19
 
-# Use of collection etmira: https://arche.acdh.oeaw.ac.at/crash/
-# Ontologie structure: https://arche.acdh.oeaw.ac.at/browser/api/rootTable/en?_format=html
+# Use of collections etmira and mylius: https://arche.acdh.oeaw.ac.at/crash/
+# Ontology structure: https://arche.acdh.oeaw.ac.at/browser/api/rootTable/en?_format=html
 # More information on package RDFlib: https://github.com/RDFLib/rdflib
 
-# Etmira's .nt file contains:
+# .nt contains:
 # - URLs wrapped in Markdown
 # - RDF resources as objects represented with quoted strings such as ^^<URI> instead of N-Triples URI syntax
 # - Other datatypes like ^^<GEOM>
@@ -15,26 +15,22 @@
 # Need to change the file before being able to load it in RDFlib.
 
 
-## Read and inspect files
+## Read and inspect file
 
 # Install packages (in bash):
-# uv add rdflib matplotlib seaborn python-dateutil
+# uv add rdflib
 
 # Standard library
+import time
+import tracemalloc
 import re
 import sys
 from collections import Counter, defaultdict
 from urllib.parse import unquote, urlparse
-import dateutil.parser
 
 # RDF processing
 from rdflib import BNode, Graph, Literal, URIRef
-from rdflib.namespace import DCTERMS, RDF, RDFS, SKOS
-
-# Visualization
-import matplotlib.pyplot as plt
-import seaborn as sns
-
+from rdflib.namespace import DCTERMS, RDF, RDFS, SKOS, XSD
 
 # Read command-line arguments
 if len(sys.argv) != 3:
@@ -44,6 +40,9 @@ if len(sys.argv) != 3:
 input_file = sys.argv[1]
 output_file = sys.argv[2]
 
+# Start performance measurements
+start_time = time.perf_counter()
+tracemalloc.start()
 
 # Preprocess the file to convert into N-Triples syntax
 with open(input_file, "r", encoding="utf-8") as infile:
@@ -109,49 +108,6 @@ print("\n=== TOP 10 MOST COMMON OBJECTS ===")
 for item, count in objects.most_common(10):
     print(f"{count:>6}  {item}")
 
-
-# Extract predicates in descending order of occurrence
-all_predicates = predicates.most_common()
-
-names = [
-    item[0].split('#')[-1] if '#' in item[0]
-    else item[0].split('/')[-1]
-    for item in all_predicates
-]
-
-counts = [item[1] for item in all_predicates]
-
-
-# Set style
-sns.set_theme(style="whitegrid")
-
-# Dynamically size the figure height based on the number of unique predicates
-fig, ax = plt.subplots(figsize=(10, max(6, len(names) * 0.4)))
-
-# Create horizontal bar plot
-sns.barplot(
-    x=counts,
-    y=names,
-    hue=names,
-    palette="viridis",
-    legend=False,
-    ax=ax
-)
-
-# Labeling and titles
-ax.set_title(
-    "Distribution of all predicates in ETMIRA collection",
-    fontsize=14,
-    pad=15
-)
-
-ax.set_xlabel("Occurrence Count", fontsize=12)
-ax.set_ylabel("Predicate", fontsize=12)
-
-plt.tight_layout()
-plt.show()
-
-
 # Print
 for predicate, count in predicates.most_common():
     name = predicate.rstrip("/#").split("/")[-1].split("#")[-1]
@@ -201,19 +157,19 @@ def clean_text(value):
     return str(value).strip()
 
 
-def format_friendly_date(date_str):
-    """Format ISO timestamps into friendly readable dates without losing data."""
-    try:
-        dt = dateutil.parser.isoparse(date_str)
 
-        # If time is present and non-zero
-        if dt.hour or dt.minute or dt.second:
-            return dt.strftime("%B %d, %Y at %I:%M %p")
 
-        return dt.strftime("%B %d, %Y")
+def format_friendly_date(value):
+    """Format XSD dates and datetimes as YYYY-MM-DD."""
 
-    except Exception:
-        return date_str
+    if (
+        isinstance(value, Literal)
+        and value.datatype in (XSD.date, XSD.dateTime)
+    ):
+        return str(value)[:10]
+
+    return str(value)
+
 
 
 def uri_fallback(uri):
@@ -448,19 +404,19 @@ def describe_triple(subject, predicate, obj):
 
     # Dates, version and status
     elif pred == "hasupdateddate":
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         sentence = f"{subject_name} was last updated on {friendly_date}"
 
     elif pred == "hasbinaryupdateddate":
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         sentence = f"The binary file for {subject_name} was last updated on {friendly_date}"
 
     elif pred == "hasavailabledate":
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         sentence = f"{subject_name} became available on {friendly_date}"
 
     elif pred in {"created", "modified"}:
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         action = "created" if pred == "created" else "modified"
         sentence = f"{subject_name} was {action} on {friendly_date}"
 
@@ -672,3 +628,15 @@ with open(output_file, "w", encoding="utf-8") as outfile:
 
 
 print(f"Exported {len(g):,} sentences to {output_file}")
+
+# Performance results
+end_time = time.perf_counter()
+current_memory, peak_memory = tracemalloc.get_traced_memory()
+tracemalloc.stop()
+
+execution_time = end_time - start_time
+
+print("\n=== PERFORMANCE RESULTS ===")
+print(f"Execution time: {execution_time:.2f} seconds")
+print(f"Current memory usage: {current_memory:,} bytes")
+print(f"Peak memory usage: {peak_memory:,} bytes")
