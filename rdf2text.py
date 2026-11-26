@@ -18,7 +18,7 @@
 ## Read and inspect file
 
 # Install packages (in bash):
-# uv add rdflib matplotlib seaborn python-dateutil
+# uv add rdflib
 
 # Standard library
 import time
@@ -27,16 +27,10 @@ import re
 import sys
 from collections import Counter, defaultdict
 from urllib.parse import unquote, urlparse
-import dateutil.parser
 
 # RDF processing
 from rdflib import BNode, Graph, Literal, URIRef
-from rdflib.namespace import DCTERMS, RDF, RDFS, SKOS
-
-# Visualization
-import matplotlib.pyplot as plt
-import seaborn as sns
-
+from rdflib.namespace import DCTERMS, RDF, RDFS, SKOS, XSD
 
 # Read command-line arguments
 if len(sys.argv) != 3:
@@ -114,49 +108,6 @@ print("\n=== TOP 10 MOST COMMON OBJECTS ===")
 for item, count in objects.most_common(10):
     print(f"{count:>6}  {item}")
 
-
-# Extract predicates in descending order of occurrence
-all_predicates = predicates.most_common()
-
-names = [
-    item[0].split('#')[-1] if '#' in item[0]
-    else item[0].split('/')[-1]
-    for item in all_predicates
-]
-
-counts = [item[1] for item in all_predicates]
-
-
-# Set style
-sns.set_theme(style="whitegrid")
-
-# Dynamically size the figure height based on the number of unique predicates
-fig, ax = plt.subplots(figsize=(10, max(6, len(names) * 0.4)))
-
-# Create horizontal bar plot
-sns.barplot(
-    x=counts,
-    y=names,
-    hue=names,
-    palette="viridis",
-    legend=False,
-    ax=ax
-)
-
-# Labeling and titles
-ax.set_title(
-    "Distribution of all predicates in collection",
-    fontsize=14,
-    pad=15
-)
-
-ax.set_xlabel("Occurrence Count", fontsize=12)
-ax.set_ylabel("Predicate", fontsize=12)
-
-plt.tight_layout()
-plt.show()
-
-
 # Print
 for predicate, count in predicates.most_common():
     name = predicate.rstrip("/#").split("/")[-1].split("#")[-1]
@@ -208,32 +159,16 @@ def clean_text(value):
 
 
 
-def format_friendly_date(date_str):
-    """Format dates as ISO YYYY-MM-DD, preserving time and timezone."""
-    try:
-        date_text = str(date_str)
-        dt = dateutil.parser.isoparse(date_text)
+def format_friendly_date(value):
+    """Format XSD dates and datetimes as YYYY-MM-DD."""
 
-        # Date only: YYYY-MM-DD
-        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_text):
-            return dt.strftime("%Y-%m-%d")
+    if (
+        isinstance(value, Literal)
+        and value.datatype in (XSD.date, XSD.dateTime)
+    ):
+        return str(value)[:10]
 
-        # Date and time, including seconds
-        result = dt.strftime("%Y-%m-%d at %H:%M:%S")
-
-        # Preserve timezone when present
-        if dt.tzinfo is not None:
-            offset = dt.strftime("%z")
-
-            if offset == "+0000":
-                result += " UTC"
-            else:
-                result += f" UTC{offset[:3]}:{offset[3:]}"
-
-        return result
-
-    except (ValueError, TypeError):
-        return str(date_str)
+    return str(value)
 
 
 
@@ -469,19 +404,19 @@ def describe_triple(subject, predicate, obj):
 
     # Dates, version and status
     elif pred == "hasupdateddate":
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         sentence = f"{subject_name} was last updated on {friendly_date}"
 
     elif pred == "hasbinaryupdateddate":
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         sentence = f"The binary file for {subject_name} was last updated on {friendly_date}"
 
     elif pred == "hasavailabledate":
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         sentence = f"{subject_name} became available on {friendly_date}"
 
     elif pred in {"created", "modified"}:
-        friendly_date = format_friendly_date(object_name)
+        friendly_date = format_friendly_date(obj)
         action = "created" if pred == "created" else "modified"
         sentence = f"{subject_name} was {action} on {friendly_date}"
 
